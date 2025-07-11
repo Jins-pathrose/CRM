@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "233139477632",
+    "project_id": "crmapp-583d8",
+    "storage_bucket": "crmapp-583d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:233139477632:android:ceb107bc22590ae583da65",
+        "android_client_info": {
+          "package_name": "com.techfifo.crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmnmmNe0XHl__Wd83NH1klk2VMwLLL8n4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
