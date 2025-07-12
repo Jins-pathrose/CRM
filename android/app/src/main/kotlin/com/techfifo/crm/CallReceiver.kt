@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
-import android.os.Environment
+import android.os.Build
 import android.telephony.TelephonyManager
 import android.util.Log
 import java.io.File
@@ -24,31 +24,42 @@ class CallReceiver : BroadcastReceiver() {
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
         when (state) {
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
-                Log.d("CallReceiver", "Call started")
+                Log.d("CallReceiver", "📞 Call started")
                 startRecording(context)
             }
 
             TelephonyManager.EXTRA_STATE_IDLE -> {
-                Log.d("CallReceiver", "Call ended")
+                Log.d("CallReceiver", "📴 Call ended")
                 stopRecording(context)
             }
         }
     }
 
     private fun startRecording(context: Context) {
-        try {
-            if (isRecording) return
+        if (isRecording) return
 
+        val androidVersion = Build.VERSION.SDK_INT
+        val manufacturer = Build.MANUFACTURER.lowercase()
+
+        Log.d("CallReceiver", "🔍 Manufacturer: $manufacturer | Android version: $androidVersion")
+
+        if (androidVersion >= Build.VERSION_CODES.Q) {
+            Log.w("CallReceiver", "🚫 Android 10+ blocks call audio recording for 3rd-party apps.")
+        }
+
+        if (manufacturer.contains("samsung") || manufacturer.contains("xiaomi") || manufacturer.contains("oppo")) {
+            Log.w("CallReceiver", "⚠️ Recording may be blocked on $manufacturer devices.")
+        }
+
+        try {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val fileName = "call_recording_$timeStamp.m4a"
             val file = File(context.cacheDir, fileName)
 
-            // Save path persistently
-            context.getSharedPreferences("call_prefs", Context.MODE_PRIVATE).edit()
-                .putString("current_path", file.absolutePath).apply()
+            Log.d("CallReceiver", "🎙 Preparing to record. File path: ${file.absolutePath}")
 
             recorder = MediaRecorder().apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 setAudioEncodingBitRate(128000)
@@ -59,9 +70,14 @@ class CallReceiver : BroadcastReceiver() {
             }
 
             isRecording = true
-            Log.d("CallReceiver", "Recording started: ${file.absolutePath}")
+            context.getSharedPreferences("call_prefs", Context.MODE_PRIVATE).edit()
+                .putString("current_path", file.absolutePath).apply()
+
+            Log.d("CallReceiver", "✅ Recording started: ${file.absolutePath}")
+            Log.d("CallReceiver", "🔊 Audio source used: ${MediaRecorder.AudioSource.VOICE_COMMUNICATION}")
+
         } catch (e: Exception) {
-            Log.e("CallReceiver", "Recording error: ${e.message}")
+            Log.e("CallReceiver", "❌ Recording failed: ${e.message}")
             recorder?.release()
             recorder = null
             isRecording = false
@@ -75,14 +91,15 @@ class CallReceiver : BroadcastReceiver() {
                 release()
             }
 
-            // Retrieve path from SharedPreferences
             val path = context.getSharedPreferences("call_prefs", Context.MODE_PRIVATE)
                 .getString("current_path", null)
 
-            Log.d("CallReceiver", "Recording stopped: $path")
+            val recordedFile = File(path ?: "")
+            Log.d("CallReceiver", "🛑 Recording stopped. File saved: $path")
+            Log.d("CallReceiver", "📂 File size: ${recordedFile.length()} bytes")
 
         } catch (e: Exception) {
-            Log.e("CallReceiver", "Stop error: ${e.message}")
+            Log.e("CallReceiver", "❌ Stop error: ${e.message}")
         } finally {
             recorder = null
             isRecording = false

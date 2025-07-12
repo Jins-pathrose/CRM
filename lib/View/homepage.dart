@@ -19,25 +19,29 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadRecordings();
+    _requestPermissionsAndLoad();
   }
 
-  Future<void> _loadRecordings() async {
-    final permission = Platform.isAndroid
-        ? await Permission.manageExternalStorage.request()
-        : await Permission.storage.request();
+  Future<void> _requestPermissionsAndLoad() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.microphone,
+      Permission.phone,
+      Platform.isAndroid ? Permission.manageExternalStorage : Permission.storage,
+    ].request();
 
-    if (!permission.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Storage permission denied")),
-        );
-      }
+    bool allGranted = statuses.values.every((status) => status.isGranted);
+    if (!allGranted && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Some permissions were denied")),
+      );
       return;
     }
 
+    await _loadRecordings();
+  }
+
+  Future<void> _loadRecordings() async {
     try {
-      // Use app's internal cache directory where .m4a is stored
       final cacheDir = await getTemporaryDirectory();
       final files = cacheDir
           .listSync()
@@ -84,25 +88,37 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Local Call Recordings")),
-      body: recordings.isEmpty
-          ? const Center(child: Text("No recordings found"))
-          : ListView.builder(
-              itemCount: recordings.length,
-              itemBuilder: (context, index) {
-                final file = recordings[index];
-                final isPlaying = file.path == _currentlyPlayingPath;
+      appBar: AppBar(
+        title: const Text("Local Call Recordings"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadRecordings,
+            tooltip: "Refresh",
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadRecordings,
+        child: recordings.isEmpty
+            ? const Center(child: Text("No recordings found"))
+            : ListView.builder(
+                itemCount: recordings.length,
+                itemBuilder: (context, index) {
+                  final file = recordings[index];
+                  final isPlaying = file.path == _currentlyPlayingPath;
 
-                return ListTile(
-                  title: Text(file.uri.pathSegments.last),
-                  subtitle: Text(file.path),
-                  trailing: IconButton(
-                    icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
-                    onPressed: () => _playRecording(file),
-                  ),
-                );
-              },
-            ),
+                  return ListTile(
+                    title: Text(file.uri.pathSegments.last),
+                    subtitle: Text(file.path),
+                    trailing: IconButton(
+                      icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
+                      onPressed: () => _playRecording(file),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }
