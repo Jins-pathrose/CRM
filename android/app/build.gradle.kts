@@ -44,4 +44,3 @@ dependencies {
     implementation("com.google.firebase:firebase-common-ktx:20.4.2")
     implementation("com.google.firebase:firebase-firestore-ktx:24.7.1") // ✅ Firestore required
 }
-
